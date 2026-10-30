@@ -98,7 +98,7 @@ iotflux/
 ### Installation
 
 ```bash
-git clone https://github.com/academic-iot/iotflux.git
+git clone https://github.com/MitjaJancic/iotflux.git
 cd iotflux
 pip install -e .
 ```
