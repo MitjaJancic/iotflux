@@ -1,0 +1,18 @@
+# =============================================================================
+# IoTFlux Authorized Lab Whitelist (lab_whitelist.txt)
+# =============================================================================
+# Reproducible Test Environment Setup & Lab Device Inventory Governance
+#
+# Devices discovered by 'discovery/auto_detect' default to 'authorized: false'.
+# Only devices explicitly listed below (by hash-derived device_id, Docker bridge IP,
+# or hardware MAC address) will receive 'authorized: true' during dynamic profile
+# generation.
+#
+# State-changing checks still require explicit operator confirmation and manual
+# credential configuration via:
+#   iotflux profiles set-creds <device_id>
+# =============================================================================
+
+172.28.0.30   # Shelly Plug S simulator (Tier 1 Living Room)
+172.28.0.36   # Shelly 2PM Dual Relay simulator (Tier 2 Kitchen)
+192.168.1.230 # Raspberry Pi 5 Lab Host (Docker containers)

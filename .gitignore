@@ -1,0 +1,60 @@
+# Python build & bytecode artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Runtime evidence & generated reports (preserve canonical evidence/templates/)
+evidence/*
+!evidence/templates/
+!evidence/templates/**
+reports/
+report.*
+*.pcap
+
+# Temporary debug artifacts, logs & crash dumps
+*.log
+debug_*
+core
+core.*
+# Keep the core-dump globs above from swallowing the iotsploit/core package
+!iotsploit/core/
+*.dmp
+
+# IDE & editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ephemeral lock files & pre-cleanup backup archives
+config/*.lock
+archive/
+
+# Unreferenced local scratch drafts
+draft_*
+notes_*
+todo_*
+
+# Obsolete test artifacts, prototypes & deprecated modules
+tests/test_*_old.py
+tests/test_*_v[0-9]*.py
+tests/test_*_legacy.py
+tests/test_*_deprecated.py
+tests/old_*
+tests/prototype_*
+tests/experimental_*
+*n2*
+
+
+# Cryptographic secret keys & local encrypted stores
+*.key
+.iotflux_fernet.key
+*.enc

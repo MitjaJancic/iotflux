@@ -1,0 +1,94 @@
+device_id: generic_smart_lock
+vendor: Generic
+model: Connected Smart Lock / Lock Bridge (BLE + Wi-Fi bridge)
+# Representative smart lock + bridge (Nuki, August). Detection reuses
+# checks/net_auditor.py, checks/web_audit.py, checks/capability_checks.py.
+# coverage-matrix class 8. Physical-access device: actuation is lab-gated.
+protocols: [http]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/lock/state"
+        method: GET
+        expect_auth: true
+        description: "Lock bridge state/API (expects authentication)"
+
+flagged_ports:
+  - port: 80
+    reason: "Lock bridge HTTP API (cert-validation / overflow class)"
+    damage_score: {physical_safety: 3, privacy: 1, financial: 0, availability: 2, chaining_depth: 3}
+  - port: 8080
+    reason: "Alternate bridge management / WebSocket API"
+    damage_score: {physical_safety: 3, privacy: 1, financial: 0, availability: 2, chaining_depth: 3}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# representative/highest-severity entries per class are included here.
+known_cves:
+  - id: "CVE-2019-17098"
+    description: "August Connect Wi-Fi Bridge hard-coded cryptographic key -> decrypt intercepted Wi-Fi credentials (CWE-321/798)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 0
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2022-32509"
+    description: "Nuki Smart Lock 3.0 / Bridge lack of TLS certificate validation (CWE-295)"
+    cvss: null
+    damage_score:
+      physical_safety: 3
+      privacy: 1
+      financial: 0
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2022-32504"
+    description: "Nuki stack buffer overflow parsing WebSocket JSON (CWE-120)"
+    cvss: null
+    damage_score:
+      physical_safety: 3
+      privacy: 0
+      financial: 0
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2022-32507"
+    description: "Nuki BLE commands callable from unprivileged accounts (CWE-284)"
+    cvss: null
+    damage_score:
+      physical_safety: 3
+      privacy: 0
+      financial: 0
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2022-32502"
+    description: "Nuki Bridge stack overflow parsing HTTP parameters (CWE-121)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 0
+      financial: 0
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2022-32505"
+    description: "Nuki malformed BLE -> functionality block / reboot (CWE-400)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 0
+      financial: 0
+      availability: 3
+      chaining_depth: 2
+  - id: "CVE-2022-32508"
+    description: "Nuki Bridge malformed HTTP verb -> forced reboot (CWE-400)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 0
+      financial: 0
+      availability: 3
+      chaining_depth: 2

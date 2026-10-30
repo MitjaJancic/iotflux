@@ -1,0 +1,43 @@
+device_id: shelly_pro_4pm
+vendor: Shelly
+model: Pro 4PM (DIN Rail Multi-Channel Switch)
+protocols: [http, mqtt]
+
+authorized: true
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/rpc/Switch.Set?id=0&on=true"
+        method: GET
+        expect_auth: true
+        description: "Toggle relay channel 0"
+      - path: "/rpc/Switch.Set?id=1&on=true"
+        method: GET
+        expect_auth: true
+        description: "Toggle relay channel 1"
+
+  mqtt:
+    topic_prefix: "shellies/shellypro4pm"
+    expected_tls: false
+
+known_cves:
+  - id: "CVE-2025-11243"
+    description: "Shelly Pro 4PM oversized HTTP request crash / DoS (brief relay drop)"
+    cvss: 7.5
+    damage_score:
+      physical_safety: 1
+      privacy: 0
+      financial: 1
+      availability: 3
+      chaining_depth: 1
+  - id: "CVE-2023-33383"
+    description: "Shelly Pro 4PM BLE out-of-bounds read -> device reload; chainable relay-toggle integrity concern (CWE-125; from coverage-matrix)"
+    cvss: null
+    damage_score:
+      physical_safety: 1
+      privacy: 0
+      financial: 1
+      availability: 2
+      chaining_depth: 2

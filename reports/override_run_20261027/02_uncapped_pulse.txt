@@ -1,0 +1,31 @@
+﻿=== STEP 2: UNCAPPED PULSE >2.0s (OVERRIDE) 2026-10-27T18:22:40.9240981+01:00 ===
+Target: simulated relay .30 | --pulse-duration 5.0s (exceeds 2.0s bounded ceiling)
+
+### BEFORE ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793121761}, "temperature": {"tC": 38.4, "tF": 101.1}}
+
+### COMMAND ###
+iotsploit validate shelly-actuation --target 172.28.0.30 --pulse-duration 5.0s --authorize --override-unsafe --confirm CONFIRM-EXP-02
+
+### OUTPUT ###
+docker : DEPRECATION: --confirm is deprecated; use --authorize in interactive mode.
+At C:\Users\mitja\AppData\Local\Temp\ps-script-0bf8b44c-39f5-4048-bde6-2a0aff3fc1f0.ps1:311 char:746
++ ... ng utf8 $f; docker exec iotsploit-kali bash -lc "cd /root/iotsploit & ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (DEPRECATION: --...teractive mode.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#   CHECK                      FINDING / USER:PASS / SERVICE                                                       SCORE
+------------------------------------------------------------------------------------------------------------------------
+1   shelly_active_verification [EXP-02 Controlled Impact Validation] Verified 5.0s bounded relay pulse on          8.0  
+                               172.28.0.30:80 (pre=LOCKED_SAFE -> during=UNLOCKED_ENERGIZED
+                               [t1=2026-10-27T17:22:43.055102Z] -> post=LOCKED_SAFE
+                               [t2=2026-10-27T17:22:48.063070Z]). PCAP:
+                               evidence/demos/exp-02_c2c1d96d_validation_capture.pcap
+                               Ôć│ Risk Classification: 8.0 -> Verified Physical Actuator State Manipulation [CWE-306 | CAPEC-180]
+------------------------------------------------------------------------------------------------------------------------
+Total: 1 finding(s)
+[exit=0]
+
+### AFTER (expect auto-reverted to LOCKED_SAFE) ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793121768}, "temperature": {"tC": 38.4, "tF": 101.1}}

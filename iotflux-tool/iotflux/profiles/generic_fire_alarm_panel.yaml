@@ -1,0 +1,83 @@
+device_id: generic_fire_alarm_panel
+vendor: Generic
+model: Networked Fire / Fire-Detection Panel
+# Representative fire alarm / fire-detection panel. Detection reuses
+# checks/net_auditor.py, checks/web_audit.py, checks/mqtt_classifier.py.
+# coverage-matrix class 3. Life-safety adjacent: assessment is read-only.
+protocols: [http, mqtt]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/config"
+        method: GET
+        expect_auth: true
+        description: "Panel configuration / zone export (expects authentication)"
+  mqtt:
+    topic_prefix: "fire-panel"
+    expected_tls: true
+
+flagged_ports:
+  - port: 80
+    reason: "HTTP panel management + config export - cleartext/default-credential class"
+    damage_score: {physical_safety: 2, privacy: 2, financial: 0, availability: 3, chaining_depth: 2}
+  - port: 5900
+    reason: "VNC remote panel operation (hard-coded password class)"
+    damage_score: {physical_safety: 3, privacy: 1, financial: 0, availability: 3, chaining_depth: 3}
+  - port: 23
+    reason: "Telnet maintenance console - cleartext, default-credential class"
+    damage_score: {physical_safety: 1, privacy: 1, financial: 0, availability: 2, chaining_depth: 3}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# the matrix is the full verified, primary-source list - representative/highest-
+# severity entries are included here per class.
+known_cves:
+  - id: "CVE-2025-41438"
+    description: "Consilium Safety CS5000 fire panel insecure-default high-privilege account (CWE-1188)"
+    cvss: 8.6
+    damage_score:
+      physical_safety: 3
+      privacy: 1
+      financial: 0
+      availability: 3
+      chaining_depth: 3
+  - id: "CVE-2025-46352"
+    description: "Consilium Safety CS5000 hard-coded VNC password -> remote panel operation (CWE-798)"
+    cvss: 8.6
+    damage_score:
+      physical_safety: 3
+      privacy: 1
+      financial: 0
+      availability: 3
+      chaining_depth: 3
+  - id: "CVE-2024-22039"
+    description: "Siemens Cerberus PRO EN / Sinteso FS20 EN memory-safety -> unauth RCE/DoS (CWE-120)"
+    cvss: 10.0
+    damage_score:
+      physical_safety: 3
+      privacy: 1
+      financial: 0
+      availability: 3
+      chaining_depth: 3
+  - id: "CVE-2024-22040"
+    description: "Siemens Cerberus PRO EN / Sinteso FS20 EN out-of-bounds read (CWE-125)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 1
+      financial: 0
+      availability: 3
+      chaining_depth: 2
+  - id: "CVE-2024-22041"
+    description: "Siemens Cerberus PRO EN / Sinteso FS20 EN improper buffer-bounds operation (CWE-119)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 1
+      financial: 0
+      availability: 3
+      chaining_depth: 2

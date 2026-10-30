@@ -1,0 +1,31 @@
+﻿=== BOUNDED-DEFAULT ACTUATION .33 (Shelly Pro 4PM, relay 0) 2026-10-27T18:56:20.5667970+01:00 ===
+SAFE bounded <=2.0s + auto-revert; NO --override-unsafe
+
+### BEFORE ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793123780}, "temperature": {"tC": 38.4, "tF": 101.1}}
+
+### COMMAND ###
+iotsploit validate shelly-actuation --target 172.28.0.33 --relay 0 --authorize --confirm CONFIRM-EXP-02
+
+### OUTPUT ###
+docker : DEPRECATION: --confirm is deprecated; use --authorize in interactive mode.
+At C:\Users\mitja\AppData\Local\Temp\ps-script-0fe1b62c-3734-4a47-b332-8e6568e2cf9b.ps1:311 char:659
++ ... ng utf8 $f; docker exec iotsploit-kali bash -lc "cd /root/iotsploit & ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (DEPRECATION: --...teractive mode.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#   CHECK                      FINDING / USER:PASS / SERVICE                                                       SCORE
+------------------------------------------------------------------------------------------------------------------------
+1   shelly_active_verification [EXP-02 Controlled Impact Validation] Verified 2.0s bounded relay pulse on          8.0  
+                               172.28.0.33:80 (pre=LOCKED_SAFE -> during=UNLOCKED_ENERGIZED
+                               [t1=2026-10-27T17:56:22.688030Z] -> post=LOCKED_SAFE
+                               [t2=2026-10-27T17:56:24.698596Z]). PCAP:
+                               evidence/demos/exp-02_09da7b1f_validation_capture.pcap
+                               Ôć│ Risk Classification: 8.0 -> Verified Physical Actuator State Manipulation [CWE-306 | CAPEC-180]
+------------------------------------------------------------------------------------------------------------------------
+Total: 1 finding(s)
+[exit=0]
+
+### AFTER ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793123785}, "temperature": {"tC": 38.4, "tF": 101.1}}

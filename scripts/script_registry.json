@@ -1,0 +1,115 @@
+{
+  "schema_version": "3.0.0",
+  "framework": "IoTFlux Transparent Orchestration Registry",
+  "default_log_path": "/var/log/iotflux/orchestrator.log",
+  "fallback_log_path": "logs/orchestrator.log",
+  "scripts": [
+    {
+      "script_id": "lab_setup",
+      "path": "lab_setup.sh",
+      "cli_equivalent": "python -m iotflux orchestrate",
+      "description": "Operator-guided step-by-step lab bootstrap script that coordinates container startup, runtime-scoped service discovery, profile generation, and manual credential configuration hints.",
+      "preconditions": [
+        "Docker Engine and docker compose plugin installed and running",
+        "lab-scope.env exists and defines ALLOWED_SUBNETS matching the target lab topology",
+        "docker-compose.yml exists in the working directory"
+      ],
+      "inputs": [
+        "lab-scope.env",
+        "docker-compose.yml",
+        "lab_whitelist.txt",
+        "--dry-run (optional flag to print commands without execution)",
+        "--auto-confirm (optional flag for non-interactive CI dry-run verification)"
+      ],
+      "expected_artifacts": [
+        "discovered_devices.json",
+        "profiles/auto_generated/<device_id>.yaml",
+        "audit_log.json",
+        "/var/log/iotflux/orchestrator.log (or logs/orchestrator.log)"
+      ],
+      "failure_modes": [
+        {
+          "error": "Docker daemon unreachable or permission denied",
+          "remediation": "Verify Docker service status ('systemctl status docker') or run with '--dry-run'."
+        },
+        {
+          "error": "ScopeViolationError during Step 2 (discovery/auto_detect)",
+          "remediation": "Run 'python -m iotflux config show-scope' and add your lab subnet to ALLOWED_SUBNETS in lab-scope.env."
+        }
+      ],
+      "manual_fallback_procedure": [
+        "1. python -m iotflux config show-scope",
+        "2. python -m iotflux infra start --compose-file docker-compose.yml",
+        "3. python -m iotflux run discovery/auto_detect --target 10.42.0.0/24 --output discovered_devices.json",
+        "4. python -m iotflux profiles generate --input discovered_devices.json --whitelist lab_whitelist.txt",
+        "5. python -m iotflux profiles set-creds <device_id>",
+        "6. python -m iotflux run validation/shelly_auditor --device-id <device_id> --require-creds"
+      ]
+    },
+    {
+      "script_id": "lab_orchestrator",
+      "path": "workflows/lab_orchestrator.py",
+      "cli_equivalent": "python -m iotflux orchestrate [--dry-run] [--step 1..7]",
+      "description": "Interactive Python workflow menu providing pre-step briefings (expected outputs, success criteria, failure modes), explicit operator confirmation gates, and structured JSONL progress logging.",
+      "preconditions": [
+        "Python 3.10+ environment with IoTFlux installed",
+        "lab-scope.env readable in workspace root"
+      ],
+      "inputs": [
+        "lab-scope.env",
+        "discovered_devices.json (for Steps 3-4)",
+        "lab_whitelist.txt (for Step 4)",
+        "--dry-run (optional)",
+        "--step <1..7> (optional)"
+      ],
+      "expected_artifacts": [
+        "discovered_devices.json",
+        "profiles/auto_generated/<device_id>.yaml",
+        "reports/lab_validation_report.json",
+        "audit_log.json",
+        "/var/log/iotflux/orchestrator.log (or logs/orchestrator.log)"
+      ],
+      "failure_modes": [
+        {
+          "error": "Missing discovered_devices.json when running Step 3 or Step 4",
+          "remediation": "Execute Step 2 (Run service discovery) first or provide a valid --input path."
+        },
+        {
+          "error": "CREDENTIAL GATE BLOCKED (exit code 2) during Step 6",
+          "remediation": "Execute Step 5 ('python -m iotflux profiles set-creds <device_id>') before running validation with --require-creds."
+        }
+      ],
+      "manual_fallback_procedure": [
+        "Execute each discrete CLI command directly via 'python -m iotflux <subcommand>' as displayed in the Step Briefing header."
+      ]
+    },
+    {
+      "script_id": "infra_start",
+      "path": "iotflux/workflows/lab_orchestrator.py:run_infra_start",
+      "cli_equivalent": "python -m iotflux infra start --compose-file docker-compose.yml [--dry-run]",
+      "description": "Discrete Step 1 wrapper that validates docker-compose.yml and starts the isolated multi-zone IoT cyber range containers.",
+      "preconditions": [
+        "docker-compose.yml present at specified path",
+        "Docker daemon active (unless --dry-run is passed)"
+      ],
+      "inputs": [
+        "--compose-file docker-compose.yml",
+        "--dry-run"
+      ],
+      "expected_artifacts": [
+        "Running Docker lab bridge networks and simulated IoT containers",
+        "WORKFLOW_STEP entry in audit_log.json and orchestrator.log"
+      ],
+      "failure_modes": [
+        {
+          "error": "Compose file missing or invalid YAML syntax",
+          "remediation": "Validate compose syntax with 'docker compose -f docker-compose.yml config'."
+        }
+      ],
+      "manual_fallback_procedure": [
+        "docker compose -f docker-compose.yml up -d",
+        "docker compose -f docker-compose.yml ps"
+      ]
+    }
+  ]
+}

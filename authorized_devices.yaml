@@ -1,0 +1,48 @@
+# Structured Authorized Devices Registry for IoTFlux Physical Pi 5 & Docker Validation Lab
+# All physical lab devices MUST define explicit datasheet-derived safety_limits
+# (max_pulse <= 2.0s or "N/A" for passive/broker nodes, plus deterministic auto_revert mechanism).
+authorized_devices:
+  - ip: "192.168.1.230"
+    role: "pi5_docker_lab_host"
+    zone: "Raspberry Pi 5 Lab Host (Docker containers on 192.168.1.230)"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "relay_off", max_power_watts: 2500.0}
+  - ip: "10.10.10.20"
+    role: "mqtt_broker_primary"
+    zone: "Tier 2 - Operational Core (VLAN 10)"
+    safety_limits: {max_pulse: "N/A", auto_revert: "session_disconnect", max_power_watts: 15.0}
+  - ip: "10.10.20.30"
+    role: "shelly_plug_s"
+    zone: "Tier 1 - Edge Smart Relay (VLAN 20)"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "relay_off", max_power_watts: 2500.0}
+  - ip: "10.10.20.31"
+    role: "shelly_2pm_dual_relay"
+    zone: "Tier 2 - Kitchen & Utility (VLAN 20)"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "dual_relay_restore", max_power_watts: 2300.0}
+  - ip: "10.10.30.40"
+    role: "smart_smoke_alarm"
+    zone: "Tier 2 - Safety & Environmental (VLAN 30)"
+    safety_limits: {max_pulse: "1.0s", auto_revert: "unmute_state_reset", max_power_watts: 5.0}
+  - ip: "10.10.30.45"
+    role: "smart_air_purifier"
+    zone: "Tier 2 - Safety & Environmental (VLAN 30)"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "fan_speed_baseline", max_power_watts: 65.0}
+  - ip: "10.10.40.50"
+    role: "smart_door_lock"
+    zone: "Tier 3 - Perimeter Access Control (VLAN 40)"
+    safety_limits: {max_pulse: "1.5s", auto_revert: "bolt_relock_immediate", max_power_watts: 12.0}
+  - ip: "10.10.40.55"
+    role: "rtsp_video_doorbell"
+    zone: "Tier 3 - Perimeter Video & Surveillance (VLAN 40)"
+    safety_limits: {max_pulse: "N/A", auto_revert: "rtsp_teardown", max_power_watts: 10.0}
+  - ip: "10.10.40.60"
+    role: "modbus_plc_controller"
+    zone: "Tier 3 - Supervisory OT Control (VLAN 40)"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "fc06_register_restore", max_power_watts: 24.0}
+  - ip: "172.28.0.30"
+    role: "docker_shelly_plug_sim"
+    zone: "Docker Validation Bridge"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "relay_off", max_power_watts: 2500.0}
+  - ip: "10.42.0.30"
+    role: "corporate_vlan_test_node"
+    zone: "Corporate IoT VLAN"
+    safety_limits: {max_pulse: "2.0s", auto_revert: "relay_off", max_power_watts: 2500.0}

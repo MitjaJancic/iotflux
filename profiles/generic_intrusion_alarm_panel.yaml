@@ -1,0 +1,79 @@
+device_id: generic_intrusion_alarm_panel
+vendor: Generic
+model: House / Intrusion Alarm Panel (security panel + communicator)
+# Representative intrusion/burglar alarm panel. Detection reuses
+# checks/net_auditor.py, checks/web_audit.py, checks/mqtt_classifier.py.
+# coverage-matrix class 4. Assessment read-only; disarm paths never exercised.
+protocols: [http, mqtt]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/settings"
+        method: GET
+        expect_auth: true
+        description: "Panel settings / zone configuration (expects authentication)"
+  mqtt:
+    topic_prefix: "intrusion-panel"
+    expected_tls: true
+
+flagged_ports:
+  - port: 80
+    reason: "HTTP panel settings - sensitive-info exposure / default-credential class"
+    damage_score: {physical_safety: 2, privacy: 2, financial: 1, availability: 2, chaining_depth: 3}
+  - port: 1883
+    reason: "MQTT zone telemetry / arm-disarm command channel (expects TLS)"
+    damage_score: {physical_safety: 2, privacy: 2, financial: 1, availability: 2, chaining_depth: 3}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# representative/highest-severity entries per class are included here.
+known_cves:
+  - id: "CVE-2024-0242"
+    description: "Qolsys IQ Panel 4 / IQ4 Hub sensitive information exposure -> unauthorized settings access (CWE-200)"
+    cvss: 7.3
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 1
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2026-27871"
+    description: "JCI / DSC PowerSeries Neo TL280 AES-ECB + default setup key -> decrypt traffic, recover/replay disarm codes (CWE-327)"
+    cvss: null
+    damage_score:
+      physical_safety: 3
+      privacy: 2
+      financial: 1
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2025-61738"
+    description: "JCI PowerG / IQPanel / IQHub cleartext transmission of sensitive information (CWE-319)"
+    cvss: 7.6
+    damage_score:
+      physical_safety: 2
+      privacy: 3
+      financial: 1
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2025-61739"
+    description: "JCI PowerG / IQPanel / IQHub nonce/key-pair reuse in encryption (CWE-323)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 1
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2025-61740"
+    description: "JCI PowerG / IQPanel / IQHub weak PRNG / origin-validation enabling replay (CWE-338)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 1
+      availability: 1
+      chaining_depth: 3

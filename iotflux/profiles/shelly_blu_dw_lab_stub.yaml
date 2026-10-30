@@ -1,0 +1,25 @@
+# STUB PROFILE — BLE device (intended lab IP 172.28.0.80)
+#
+# NOTE (testbed-expansion): A realistic BLE GATT simulator cannot be
+# hosted inside the existing Alpine `simulators` Docker image without
+# BlueZ + a virtual HCI adapter (e.g. bumble/bluetoothd), which this
+# lab framework does not currently provide. No fake GATT traffic is
+# emitted. Use the physical Shelly BLU Door/Window unit (see
+# profiles/shelly_blu_dw.yaml) for live BLE assessment.
+#
+# Intended mapping when a BLE sim is added later:
+#   - Unauthenticated GATT characteristics → CWE-306 / CAPEC-180
+#   - Advertisement name_pattern match → ble scan check
+
+device_id: shelly_blu_dw_lab_stub
+vendor: Shelly
+model: BLU Door/Window (lab stub — not simulated in Docker)
+protocols: [ble]
+
+authorized: true
+
+network:
+  ble:
+    name_pattern: "SBDW"
+
+known_cves: []

@@ -1,0 +1,61 @@
+# Side-gate ONVIF/RTSP camera (lab sim @ 172.28.0.51)
+# Deliberate misconfigs: default admin/admin, directory-listing web root,
+# unauthenticated RTSP + config leak.
+# Maps to: camera_checks (rtsp_unauth_stream, camera_unauth_snapshot,
+# camera_config_exposure) + default-cred / exposed-service findings.
+# Taxonomy: CWE-306, CWE-798, CWE-522, CAPEC-180.
+
+device_id: ip_camera_side_gate
+vendor: CamVision-ONVIF (lab-sim)
+model: HIKV-DS-2CD2043G2 (lab fixture)
+protocols: [http]
+
+authorized: true
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/snapshot.jpg"
+        method: GET
+        expect_auth: true
+        description: "Still-frame snapshot — must require credentials"
+      - path: "/api/v1/config"
+        method: GET
+        expect_auth: true
+        description: "System config endpoint — must require credentials"
+
+flagged_ports:
+  - port: 554
+    reason: "RTSP media plane; lab fixture ships with auth disabled"
+    damage_score:
+      physical_safety: 1
+      privacy: 3
+      financial: 0
+      availability: 0
+      chaining_depth: 1
+
+known_cves:
+  - id: "LAB-CAM51-DEFAULT-CREDS"
+    description: >
+      Lab fixture ships with default credentials admin/admin and an
+      unauthenticated /api/v1/config that discloses the same pair
+      (CWE-798 / CWE-522). Behavioral finding, not a CVE.
+    cvss: 9.1
+    damage_score:
+      physical_safety: 1
+      privacy: 3
+      financial: 0
+      availability: 1
+      chaining_depth: 2
+  - id: "LAB-CAM51-DIR-LISTING"
+    description: >
+      GoAhead-Webs root returns Apache-style directory listing exposing
+      system.ini, firmware_backup.bin, users.db (CWE-548 / CWE-200).
+    cvss: 5.3
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 0
+      availability: 0
+      chaining_depth: 1

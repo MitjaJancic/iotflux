@@ -1,0 +1,24 @@
+﻿=== STEP 3: MQTT BRUTE-FORCE (OVERRIDE) 2026-10-27T18:23:08.3519748+01:00 ===
+Target: broker .20:1883 (allowlisted) | creds admin:admin
+
+### COMMAND ###
+iotsploit validate mqtt-bruteforce --target 172.28.0.20 --creds admin:admin --authorize --override-unsafe --confirm CONFIRM-MQTT-BRUTEFORCE
+
+### OUTPUT ###
+docker : DEPRECATION: --confirm is deprecated; use --authorize in interactive mode.
+At C:\Users\mitja\AppData\Local\Temp\ps-script-648491a3-0a12-4a5d-84d3-df6a6b9d05bb.ps1:311 char:481
++ ... ng utf8 $f; docker exec iotsploit-kali bash -lc "cd /root/iotsploit & ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (DEPRECATION: --...teractive mode.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#   CHECK                      FINDING / USER:PASS / SERVICE                                                       SCORE
+------------------------------------------------------------------------------------------------------------------------
+1   mqtt_credential_bruteforce [MQTT-BRUTEFORCE Controlled Impact Validation] Iterated 1 credential(s) against     4.0  
+                               svc:172.28.0.20:1883 via repeated CONNECT/CONNACK. 1 authenticated (handles:
+                               cred_8da19336). All sessions disconnected; plaintext secrets never persisted
+                               (SHA-256 handles only).
+                               Ôć│ Risk Classification: 4.0 -> Broker Credential Brute-Force Exposure [CWE-307 | CAPEC-49]
+------------------------------------------------------------------------------------------------------------------------
+Total: 1 finding(s)
+[exit=0]

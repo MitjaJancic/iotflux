@@ -1,0 +1,115 @@
+device_id: generic_router_gateway
+vendor: Generic
+model: Home Router / Residential Gateway (OpenWrt-class)
+# Representative router/gateway device class. Detection reuses checks/web_audit.py,
+# checks/net_auditor.py and the UPnP/SSDP surfaces. coverage-matrix class 5.
+protocols: [http]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/cgi-bin/luci/"
+        method: GET
+        expect_auth: true
+        description: "LuCI / web management UI (expects authentication)"
+
+flagged_ports:
+  - port: 80
+    reason: "HTTP management UI - default-credential and cleartext transport class"
+    damage_score: {physical_safety: 0, privacy: 2, financial: 1, availability: 2, chaining_depth: 2}
+  - port: 443
+    reason: "HTTPS management UI"
+    damage_score: {physical_safety: 0, privacy: 1, financial: 1, availability: 1, chaining_depth: 1}
+  - port: 23
+    reason: "Telnet - cleartext remote management, default-credential class"
+    damage_score: {physical_safety: 0, privacy: 2, financial: 1, availability: 2, chaining_depth: 3}
+  - port: 22
+    reason: "SSH remote management - default/weak credential class"
+    damage_score: {physical_safety: 0, privacy: 2, financial: 1, availability: 2, chaining_depth: 3}
+  - port: 1900
+    reason: "UPnP / SSDP - device descriptor leak and WAN control exposure"
+    damage_score: {physical_safety: 0, privacy: 1, financial: 1, availability: 1, chaining_depth: 2}
+  - port: 7547
+    reason: "TR-069 / CWMP remote management (ISP ACS) presence"
+    damage_score: {physical_safety: 0, privacy: 1, financial: 1, availability: 2, chaining_depth: 2}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# the matrix is the full verified, primary-source list - representative/highest-
+# severity entries are included here per class.
+known_cves:
+  - id: "CVE-2023-1389"
+    description: "TP-Link Archer AX21 OS command injection via country form (CWE-77; KEV)"
+    cvss: 8.8
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 3
+      chaining_depth: 3
+  - id: "CVE-2016-6277"
+    description: "NETGEAR web management CSRF -> arbitrary command execution (CWE-352; KEV)"
+    cvss: 8.8
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2017-5521"
+    description: "NETGEAR password disclosure via crafted web-management requests (CWE-522; KEV)"
+    cvss: 8.1
+    damage_score:
+      physical_safety: 0
+      privacy: 3
+      financial: 1
+      availability: 1
+      chaining_depth: 3
+  - id: "CVE-2019-16920"
+    description: "D-Link unauthenticated RCE via PingTest CGI (CWE-78; KEV)"
+    cvss: 9.8
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 3
+      chaining_depth: 3
+  - id: "CVE-2018-10561"
+    description: "Dasan GPON authentication bypass by appending ?images (CWE-287; KEV)"
+    cvss: 9.8
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2018-14847"
+    description: "MikroTik RouterOS WinBox unauthenticated arbitrary file read (CWE-22; KEV)"
+    cvss: 9.1
+    damage_score:
+      physical_safety: 0
+      privacy: 3
+      financial: 1
+      availability: 2
+      chaining_depth: 3
+  - id: "CVE-2020-12695"
+    description: "UPnP CallStranger - event subscription SSRF / amplification class (CWE-276)"
+    cvss: 7.5
+    damage_score:
+      physical_safety: 0
+      privacy: 1
+      financial: 1
+      availability: 2
+      chaining_depth: 2
+  - id: "CVE-2011-5053"
+    description: "WPS external registrar - online PIN enumeration resilience failure (CWE-287)"
+    cvss: null
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 1
+      chaining_depth: 2

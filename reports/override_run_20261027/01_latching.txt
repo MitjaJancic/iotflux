@@ -1,0 +1,55 @@
+﻿=== STEP 1: LATCHING PULSE (OVERRIDE) 2026-10-27T18:21:50.7550212+01:00 ===
+Target: lock .30 | auto-revert OFF, hold until explicit --revert
+
+### BEFORE: lock .30 Switch.GetStatus ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793121711}, "temperature": {"tC": 38.4, "tF": 101.1}}
+
+### COMMAND ###
+iotsploit validate shelly-actuation --target 172.28.0.30 --pulse --authorize --override-unsafe --confirm CONFIRM-EXP-02
+
+### OUTPUT ###
+docker : DEPRECATION: --confirm is deprecated; use --authorize in interactive mode.
+At C:\Users\mitja\AppData\Local\Temp\ps-script-184eecf9-263d-4edc-ae0b-bcb5ea679f63.ps1:311 char:807
++ ... ng utf8 $f; docker exec iotsploit-kali bash -lc "cd /root/iotsploit & ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (DEPRECATION: --...teractive mode.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#   CHECK                      FINDING / USER:PASS / SERVICE                                                       SCORE
+------------------------------------------------------------------------------------------------------------------------
+1   shelly_active_verification [EXP-02 Controlled Impact Validation] Verified 2.0s bounded relay pulse on          8.0  
+                               172.28.0.30:80 (pre=LOCKED_SAFE -> during=UNLOCKED_ENERGIZED
+                               [t1=2026-10-27T17:21:52.889627Z] -> post=UNLOCKED_ENERGIZED [t2=t2]). PCAP:
+                               evidence/demos/exp-02_f5ddc6e4_validation_capture.pcap
+                               Ôć│ Risk Classification: 8.0 -> Verified Physical Actuator State Manipulation [CWE-306 | CAPEC-180]
+------------------------------------------------------------------------------------------------------------------------
+Total: 1 finding(s)
+[exit=0]
+
+### AFTER latching (expect HELD/energized, output:true) ###
+{"id": 0, "source": "HTTP_in", "output": true, "apower": 8.4, "voltage": 230.2, "current": 0.036, "pf": 0.98, "aenergy": {"total": 124.5, "by_minute": [0.134, 0.134, 0.134], "minute_ts": 1793121713}, "temperature": {"tC": 38.4, "tF": 101.1}}
+
+### EXPLICIT RESTORE COMMAND ###
+iotsploit validate shelly-actuation --target 172.28.0.30 --revert --authorize --confirm CONFIRM-EXP-02
+
+### OUTPUT ###
+docker : DEPRECATION: --confirm is deprecated; use --authorize in interactive mode.
+At C:\Users\mitja\AppData\Local\Temp\ps-script-a2281832-68f4-4ee3-8e19-167fd4b26a6a.ps1:311 char:375
++ ... ng utf8 $f; docker exec iotsploit-kali bash -lc "cd /root/iotsploit & ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (DEPRECATION: --...teractive mode.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+#   CHECK                      FINDING / USER:PASS / SERVICE                                                       SCORE
+------------------------------------------------------------------------------------------------------------------------
+1   shelly_active_verification [EXP-02 Controlled Impact Validation] Verified 2.0s bounded relay pulse on          8.0  
+                               172.28.0.30:80 (pre=LOCKED_SAFE -> during=LOCKED_SAFE [t1=t1] -> post=LOCKED_SAFE
+                               [t2=2026-10-27T17:22:16.330175Z]). PCAP:
+                               evidence/demos/exp-02_62b771fc_validation_capture.pcap
+                               Ôć│ Risk Classification: 8.0 -> Verified Physical Actuator State Manipulation [CWE-306 | CAPEC-180]
+------------------------------------------------------------------------------------------------------------------------
+Total: 1 finding(s)
+[exit=0]
+
+### AFTER revert (expect LOCKED_SAFE, output:false) ###
+{"id": 0, "source": "HTTP_in", "output": false, "apower": 0.0, "voltage": 230.2, "current": 0.0, "pf": 0.0, "aenergy": {"total": 124.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1793121736}, "temperature": {"tC": 38.4, "tF": 101.1}}

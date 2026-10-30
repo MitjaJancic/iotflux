@@ -1,0 +1,67 @@
+device_id: generic_bacnet_knx_controller
+vendor: Generic
+model: Building Automation Controller (BACnet / KNX)
+# Representative building-automation controller (BACnet/IP, BACnet MSTP, KNX).
+# Detection reuses checks/net_auditor.py (service fingerprint) + flagged ports.
+# coverage-matrix class 11. OT/BAS: assessment read-only, no crafted BACnet writes.
+protocols: [http]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/"
+        method: GET
+        expect_auth: true
+        description: "Controller web management interface (expects authentication)"
+
+flagged_ports:
+  - port: 47808
+    reason: "BACnet/IP (UDP 0xBAC0) - device/object enumeration and write exposure"
+    damage_score: {physical_safety: 2, privacy: 1, financial: 1, availability: 3, chaining_depth: 2}
+  - port: 3671
+    reason: "KNXnet/IP (UDP) - group-address control exposure"
+    damage_score: {physical_safety: 2, privacy: 1, financial: 1, availability: 3, chaining_depth: 2}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# representative/highest-severity entries per class are included here.
+known_cves:
+  - id: "CVE-2023-4346"
+    description: "KNX Connection Authorization Option 1 with no BCU key -> lockout via purge + set BCU key (CWE-645; known public exploitation)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 0
+      financial: 1
+      availability: 3
+      chaining_depth: 2
+  - id: "CVE-2025-40556"
+    description: "Siemens BACnet ATEC improper input validation on BACnet MSTP -> DoS (power cycle to recover) (CWE-20)"
+    cvss: null
+    damage_score:
+      physical_safety: 2
+      privacy: 0
+      financial: 0
+      availability: 3
+      chaining_depth: 1
+  - id: "CVE-2025-40555"
+    description: "Siemens APOGEE PXC + TALON TC unsolicited BACnet broadcasts after crafted createObject -> partial DoS (CWE-440)"
+    cvss: null
+    damage_score:
+      physical_safety: 1
+      privacy: 0
+      financial: 0
+      availability: 3
+      chaining_depth: 1
+  - id: "CVE-2019-12480"
+    description: "BACnet Protocol Stack <=0.8.6 malformed DCC -> segfault DoS (CWE-125)"
+    cvss: null
+    damage_score:
+      physical_safety: 1
+      privacy: 0
+      financial: 0
+      availability: 3
+      chaining_depth: 1

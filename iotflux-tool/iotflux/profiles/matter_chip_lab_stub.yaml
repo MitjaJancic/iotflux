@@ -1,0 +1,25 @@
+# STUB PROFILE — Matter/CHIP device (intended lab IP 172.28.0.81)
+#
+# NOTE (testbed-expansion): A Matter/CHIP commissioning-window simulator
+# requires a CHIP controller stack (connectedhomeip) and either Thread
+# or Wi-Fi Matter transport. That is outside the existing
+# multi_protocol_devices.py / Alpine sim framework. No fabricated
+# commissioning traffic or default setup codes are emitted here.
+#
+# Intended mapping when a Matter sim is added later:
+#   - Open commissioning window + default setup code → CWE-306 / CWE-798
+#   - Unauthenticated cluster reads → CAPEC-180
+
+device_id: matter_chip_lab_stub
+vendor: Matter/CHIP (lab stub)
+model: Generic Matter End Device (not simulated in Docker)
+protocols: [http]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints: []
+
+known_cves: []

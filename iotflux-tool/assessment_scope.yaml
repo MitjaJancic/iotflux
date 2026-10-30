@@ -1,0 +1,14 @@
+﻿# Operator-defined assessment boundaries for IoTFlux Field Assessment
+# Fail-closed: only the isolated Docker lab + localhost.
+# Add a physical segment here only when you isolate a real device and name its range.
+allowed_networks:
+  - cidr: "172.28.0.0/24"
+    description: "Isolated Docker validation bridge (iotsploit lab)"
+  - cidr: "127.0.0.0/8"
+    description: "Localhost loopback"
+denied_networks:
+  - cidr: "0.0.0.0/0"
+    description: "Default deny all external"
+validation_mode: enforce  # enforce | warn | dry-run
+max_concurrent_probes: 10
+probe_timeout_seconds: 3

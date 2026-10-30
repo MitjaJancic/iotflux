@@ -1,0 +1,29 @@
+# Operator-defined assessment boundaries for IoTFlux Field & Physical Lab Assessment
+allowed_networks:
+  - cidr: "192.168.1.230/32"
+    description: "Raspberry Pi 5 Lab Host (Docker containers on 192.168.1.230)"
+    physical_lab: false
+  - cidr: "172.28.0.0/24"
+    description: "Isolated Docker validation bridge (iotsploit lab)"
+    physical_lab: false
+  - cidr: "10.10.0.0/16"
+    description: "Physical Raspberry Pi 5 Smart Home Lab (OpenWrt Zone-Isolated)"
+    physical_lab: true
+  - cidr: "10.42.0.0/16"
+    description: "Corporate IoT VLAN"
+    physical_lab: false
+  - cidr: "192.168.50.0/24"
+    description: "Residential test segment"
+    physical_lab: false
+  - cidr: "172.30.0.0/24"
+    description: "Secondary validation segment"
+    physical_lab: false
+  - cidr: "127.0.0.0/8"
+    description: "Localhost loopback"
+    physical_lab: false
+denied_networks:
+  - cidr: "0.0.0.0/0"
+    description: "Default deny all external"
+validation_mode: enforce  # enforce | warn | dry-run
+max_concurrent_probes: 10
+probe_timeout_seconds: 3

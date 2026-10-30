@@ -1,0 +1,78 @@
+device_id: generic_smart_plug
+vendor: Generic
+model: Smart Plug / Smart Switch (Kasa/Tapo, Tuya, Sonoff classes)
+# Representative smart plug/switch. Detection reuses checks/net_auditor.py,
+# checks/mqtt_classifier.py, checks/web_audit.py. coverage-matrix class 10.
+protocols: [http, mqtt]
+
+authorized: false
+
+network:
+  http:
+    base_url: "http://{ip}"
+    state_changing_endpoints:
+      - path: "/app"
+        method: GET
+        expect_auth: true
+        description: "Local plug control API (expects authentication)"
+  mqtt:
+    topic_prefix: "plug"
+    expected_tls: true
+
+flagged_ports:
+  - port: 80
+    reason: "Local HTTP control API (cert-validation / impersonation class)"
+    damage_score: {physical_safety: 1, privacy: 1, financial: 1, availability: 2, chaining_depth: 2}
+  - port: 1883
+    reason: "Cloud/local MQTT control channel (device impersonation class)"
+    damage_score: {physical_safety: 1, privacy: 1, financial: 1, availability: 2, chaining_depth: 2}
+
+# CVEs below are copied verbatim from the Threat Intel coverage matrix
+# (/workspace/iotsploit-research/coverage-matrix.md). No CVE IDs are invented;
+# representative/highest-severity entries per class are included here.
+known_cves:
+  - id: "CVE-2024-46548"
+    description: "TP-Link Tapo P125M / Kasa KP125M improper certificate validation -> MitM / sensitive info (CWE-200)"
+    cvss: null
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 1
+      chaining_depth: 2
+  - id: "CVE-2024-46549"
+    description: "TP-Link Kasa KP125M MQTT broker device impersonation as other users' devices (CWE-269)"
+    cvss: null
+    damage_score:
+      physical_safety: 1
+      privacy: 2
+      financial: 1
+      availability: 2
+      chaining_depth: 2
+  - id: "CVE-2023-38907"
+    description: "Tapo L530/L510E/L630/P100 replay of old messages under still-valid session"
+    cvss: null
+    damage_score:
+      physical_safety: 1
+      privacy: 1
+      financial: 1
+      availability: 2
+      chaining_depth: 2
+  - id: "CVE-2023-38906"
+    description: "Tapo L530/L510E/L630/P100 sensitive information via authentication protocol"
+    cvss: null
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 1
+      chaining_depth: 2
+  - id: "CVE-2020-12702"
+    description: "eWeLink (Sonoff) Quick Pairing weak encryption -> eavesdrop Wi-Fi credentials (CWE-327)"
+    cvss: null
+    damage_score:
+      physical_safety: 0
+      privacy: 2
+      financial: 1
+      availability: 0
+      chaining_depth: 2

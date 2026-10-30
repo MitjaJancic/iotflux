@@ -1,0 +1,44 @@
+# Second MQTT listener (lab sim @ 172.28.0.21)
+# Deliberate misconfigs: allow_anonymous=true, no ACL file (wildcard `#`
+# subscriptions unrestricted), retained actuator/bridge/telemetry tree.
+# Maps to: mqtt_auth_posture, mqtt_actuator_exposure, mqtt_bridge_pivot,
+# mqtt_telemetry_exposure, mqtt_tls (CWE-306, CWE-284, CWE-319, CAPEC-180).
+
+device_id: mqtt_anon_listener
+vendor: Eclipse Mosquitto (lab-sim)
+model: mosquitto-anon (no ACL)
+protocols: [mqtt]
+
+authorized: true
+
+network:
+  mqtt:
+    topic_prefix: "lab"
+    expected_tls: true
+    credentials_to_test:
+      - username: ""
+        password: ""
+
+flagged_ports:
+  - port: 1883
+    reason: "Anonymous MQTT listener with unrestricted wildcard subscriptions"
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 0
+      availability: 1
+      chaining_depth: 2
+
+known_cves:
+  - id: "LAB-MQTT21-ANON-WILDCARD"
+    description: >
+      Lab fixture Mosquitto accepts anonymous CONNECT and has no ACL,
+      so `#` / `+` wildcards expose actuator and bridge topics
+      (CWE-306 / CWE-284 / CAPEC-180). Behavioral finding.
+    cvss: 8.6
+    damage_score:
+      physical_safety: 2
+      privacy: 2
+      financial: 0
+      availability: 1
+      chaining_depth: 2
