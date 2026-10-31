@@ -29,6 +29,7 @@ core
 core.*
 # Keep the core-dump globs above from swallowing the iotsploit/core package
 !iotsploit/core/
+!iotflux/core/
 *.dmp
 
 # IDE & editor directories
