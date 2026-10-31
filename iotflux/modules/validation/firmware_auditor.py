@@ -133,7 +133,7 @@ class FirmwareAuditor(BaseValidationModule):
         target_dir_str = self.get_option("TARGET_DIR", session) or "."
         target_dir = Path(target_dir_str)
         max_binaries = int(self.get_option("MAX_BINARIES", session) or 50)
-        scan_sec = bool(self.get_option("SCAN_SECRETS", session))
+        scan_sec = self.get_bool_option("SCAN_SECRETS", session, default=True)
 
         logger.info(f"Auditing extracted firmware filesystem at: {target_dir}")
 

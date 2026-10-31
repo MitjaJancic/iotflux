@@ -103,7 +103,7 @@ class CameraAuditor(BaseValidationModule):
 
         rtsp_port = int(self.get_option("RTSP_PORT", session) or 554)
         http_port = int(self.get_option("HTTP_PORT", session) or 80)
-        check_snaps = bool(self.get_option("CHECK_SNAPSHOTS", session))
+        check_snaps = self.get_bool_option("CHECK_SNAPSHOTS", session, default=True)
 
         logger.info(f"Auditing IP camera / surveillance node on {target} (RTSP:{rtsp_port}, HTTP:{http_port})...")
 

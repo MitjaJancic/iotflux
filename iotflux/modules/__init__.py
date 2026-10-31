@@ -12,6 +12,7 @@ from .discovery.subnet_mapper import SubnetMapper
 from .discovery.coap_scanner import CoapScanner
 from .discovery.upnp_scanner import UpnpScanner
 from .discovery.auto_detect import AutoDetectScanner
+from .discovery.shelly_mdns import ShellyMdns
 
 # Validation modules
 from .validation.shelly_auditor import ShellyAuditor
@@ -33,6 +34,9 @@ from .conformance.matter_auditor import MatterAuditor
 # Correlation modules
 from .correlation.cross_zone_correlator import CrossZoneCorrelator
 
+# Exploitation modules (state-changing)
+from .exploit import EXPLOIT_MODULES
+
 MODULE_REGISTRY: Dict[str, Type[BaseValidationModule]] = {
     # Discovery
     "discovery/auto_detect": AutoDetectScanner,
@@ -40,6 +44,7 @@ MODULE_REGISTRY: Dict[str, Type[BaseValidationModule]] = {
     "discovery/subnet_mapper": SubnetMapper,
     "discovery/coap_scanner": CoapScanner,
     "discovery/upnp_scanner": UpnpScanner,
+    "discovery/shelly_mdns": ShellyMdns,
     # Validation
     "validation/shelly_auditor": ShellyAuditor,
     "validation/pin_entropy_analyzer": PinEntropyAnalyzer,
@@ -58,6 +63,9 @@ MODULE_REGISTRY: Dict[str, Type[BaseValidationModule]] = {
     # Correlation
     "correlation/cross_zone_correlator": CrossZoneCorrelator,
 }
+
+# Exploitation
+MODULE_REGISTRY.update(EXPLOIT_MODULES)
 
 
 def get_module(name: str) -> BaseValidationModule:

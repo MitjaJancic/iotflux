@@ -23,7 +23,7 @@ class CrossZoneCorrelator(BaseValidationModule):
 
     def run(self, session: FluxSession) -> List[ValidationFinding]:
         self.findings.clear()
-        simulate_flat = bool(self.get_option("SIMULATE_FLAT_NETWORK") or True)
+        simulate_flat = self.get_bool_option("SIMULATE_FLAT_NETWORK", default=True)
 
         logger.info("Analyzing cross-zone configuration dependencies and risk propagation paths...")
 

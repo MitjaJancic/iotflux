@@ -51,7 +51,7 @@ class WebCloudAuditor(BaseValidationModule):
             return self.findings
 
         port = int(self.get_option("PORT", session) or 80)
-        use_tls = bool(self.get_option("USE_TLS", session))
+        use_tls = self.get_bool_option("USE_TLS", session)
         timeout = float(self.get_option("TIMEOUT", session) or 2.5)
 
         scheme = "https" if use_tls else "http"

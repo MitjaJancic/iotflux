@@ -45,14 +45,17 @@ class TestAuthorizeScopeOverride(unittest.TestCase):
         env_file.write_text(FAIL_CLOSED_ENV, encoding="utf-8")
         return env_file
 
-    def test_a_out_of_scope_without_authorize_raises(self) -> None:
+    def test_a_out_of_scope_without_authorize_is_advisory(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp = Path(tmpdir)
             env_file = self._env(tmp)
             audit_file = tmp / "audit_log.json"
             with patch("iotflux.core.scope_validator.audit_trail", AuditTrailLogger(audit_file)):
-                with self.assertRaises(ScopeViolationError):
-                    validate_target_ip(CAMERA_IP, env_path=env_file)
+                self.assertTrue(validate_target_ip(CAMERA_IP, env_path=env_file))
+            events = json.loads(audit_file.read_text(encoding="utf-8"))
+            advisory = [e for e in events if e["event_type"] == "SCOPE_ADVISORY"]
+            self.assertGreaterEqual(len(advisory), 1)
+            self.assertFalse(advisory[0]["details"]["is_allowed"])
 
     def test_b_authorize_alone_allows_and_audits(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -67,10 +70,10 @@ class TestAuthorizeScopeOverride(unittest.TestCase):
                 hosts = expand_scoped_targets(CAMERA_IP, env_path=env_file, authorize_override=True)
                 self.assertEqual(hosts, [CAMERA_IP])
             events = json.loads(audit_file.read_text(encoding="utf-8"))
-            overrides = [e for e in events if e["event_type"] == "SCOPE_OVERRIDE_AUTHORIZED"]
+            overrides = [e for e in events if e["event_type"] == "SCOPE_ADVISORY"]
             self.assertGreaterEqual(len(overrides), 1)
             self.assertEqual(overrides[0]["details"]["justification"], "operator --authorize")
-            self.assertIn("SCOPE_OVERRIDE_AUTHORIZED", jsonl.read_text(encoding="utf-8"))
+            self.assertIn("SCOPE_ADVISORY", jsonl.read_text(encoding="utf-8"))
 
     def test_c_nested_helper_honors_active_authorize_flag(self) -> None:
         """Module-level probe helpers must honor _ACTIVE_AUTHORIZE_OVERRIDE (the discover plumbing bug)."""
@@ -82,8 +85,7 @@ class TestAuthorizeScopeOverride(unittest.TestCase):
             audit_file = tmp / "audit_log.json"
             with patch("iotflux.core.scope_validator.audit_trail", AuditTrailLogger(audit_file)):
                 ad._ACTIVE_AUTHORIZE_OVERRIDE = False
-                with self.assertRaises(ScopeViolationError):
-                    ad._authorized_validate_target_ip(CAMERA_IP, env_path=env_file)
+                self.assertTrue(ad._authorized_validate_target_ip(CAMERA_IP, env_path=env_file))
                 ad._ACTIVE_AUTHORIZE_OVERRIDE = True
                 try:
                     self.assertTrue(ad._authorized_validate_target_ip(CAMERA_IP, env_path=env_file))
@@ -101,7 +103,9 @@ class TestAuthorizeScopeOverride(unittest.TestCase):
 
     def test_e_authorize_flips_authorized_test(self) -> None:
         sess = FluxSession()
-        self.assertFalse(sess.get_option("AUTHORIZED_TEST"))
+        # Both gates start enabled (exploit-by-default).
+        self.assertTrue(sess.get_option("AUTHORIZED_TEST"))
+        self.assertTrue(sess.get_option("AUTHORIZE"))
         sess.set_option("AUTHORIZE", True)
         self.assertTrue(sess.get_option("AUTHORIZE"))
         self.assertTrue(sess.get_option("AUTHORIZED_TEST"))

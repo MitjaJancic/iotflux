@@ -16,8 +16,11 @@ evidence/*
 !evidence/templates/
 !evidence/templates/**
 reports/
+logs/
 report.*
 *.pcap
+hygiene_audit_report.json
+hygiene_cleanup_audit.jsonl
 
 # Temporary debug artifacts, logs & crash dumps
 *.log
@@ -58,3 +61,7 @@ tests/experimental_*
 *.key
 .iotflux_fernet.key
 *.enc
+
+# Plaintext credential store & captured media
+creds.json
+evidence/captures/

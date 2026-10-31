@@ -49,7 +49,10 @@ class TestIoTFluxCore(unittest.TestCase):
         self.session = FluxSession()
 
     def test_session_defaults_and_safety_invariant(self) -> None:
-        self.assertFalse(self.session.get_option("AUTHORIZED_TEST"))
+        # Exploit-by-default: state changes are permitted without a gate.
+        self.assertTrue(self.session.get_option("AUTHORIZED_TEST"))
+        self.assertTrue(self.session.get_option("AUTHORIZE"))
+        self.assertFalse(self.session.get_option("AUTO_REVERT"))
         self.assertEqual(self.session.get_option("TARGET"), "127.0.0.1")
 
         self.session.set_option("TARGET", "172.30.1.30")
@@ -58,8 +61,9 @@ class TestIoTFluxCore(unittest.TestCase):
         self.session.set_option("PORT", "8080")
         self.assertEqual(self.session.get_option("PORT"), 8080)
 
-        self.session.set_option("AUTHORIZED_TEST", "true")
-        self.assertTrue(self.session.get_option("AUTHORIZED_TEST"))
+        # Read-only mode is still reachable by turning the gate off explicitly.
+        self.session.set_option("AUTHORIZED_TEST", "false")
+        self.assertFalse(self.session.get_option("AUTHORIZED_TEST"))
 
     def test_specification_catalog(self) -> None:
         specs = list_specs()
@@ -333,18 +337,20 @@ class TestIoTFluxPortedFeatures(unittest.TestCase):
         auditor.set_option("TARGET", "172.30.2.65")
         auditor.set_option("PORT", 502)
 
-        # 1. Read-Only Default Run
+        # 1. Default run: read + unauthenticated write (no revert)
         findings = auditor.run(self.session)
-        self.assertEqual(len(findings), 1)
-        self.assertEqual(findings[0].finding_id, "MODBUS-UNAUTH-READ-EXPOSED")
-
-        # 2. Authorized Run with Auto-Revert
-        self.session.set_option("AUTHORIZED_TEST", True)
-        auditor.set_option("PULSE_DURATION", 0.01)
-        findings_auth = auditor.run(self.session)
-        f_ids = [f.finding_id for f in findings_auth]
+        f_ids = [f.finding_id for f in findings]
+        self.assertIn("MODBUS-UNAUTH-READ-EXPOSED", f_ids)
         self.assertIn("MODBUS-UNAUTH-CONTROL-VALIDATED", f_ids)
-        self.assertGreaterEqual(mock_write.call_count, 2)  # Write test value then revert
+        self.assertEqual(mock_write.call_count, 1)  # single write, no auto-revert
+
+        # 2. With AUTO_REVERT the baseline is written back
+        mock_write.reset_mock()
+        self.session.set_option("AUTO_REVERT", True)
+        auditor.set_option("PULSE_DURATION", 0.01)
+        findings_revert = auditor.run(self.session)
+        self.assertIn("MODBUS-UNAUTH-CONTROL-VALIDATED", [f.finding_id for f in findings_revert])
+        self.assertGreaterEqual(mock_write.call_count, 2)  # write test value then restore
 
     @patch("iotflux.modules.discovery.coap_scanner.probe_coap_endpoint")
     def test_coap_scanner(self, mock_probe: MagicMock) -> None:
@@ -517,12 +523,11 @@ class TestDynamicDeviceIntegration(unittest.TestCase):
     def test_1_auto_detect_scope_lock_rejects_external_networks(self) -> None:
         from iotflux.modules.discovery.auto_detect import AutoDetectScanner, LabScopeViolationError, enforce_docker_lab_scope
 
-        # External and home networks must be blocked at compile-time scope check
-        for forbidden in ("192.168.1.0/24", "192.168.1.50", "10.0.0.1", "8.8.8.8", "172.16.0.1"):
-            with self.assertRaises(LabScopeViolationError):
-                enforce_docker_lab_scope(forbidden)
+        # Scope is advisory now: external networks expand without raising.
+        for external in ("192.168.1.0/24", "192.168.1.50", "10.0.0.1", "8.8.8.8", "172.16.0.1"):
+            self.assertTrue(enforce_docker_lab_scope(external))
 
-        # Authorized Docker lab subnet 172.28.0.0/16 must succeed
+        # Authorized Docker lab subnet 172.28.0.0/16 must still expand correctly
         allowed_hosts = enforce_docker_lab_scope("172.28.0.30")
         self.assertEqual(allowed_hosts, ["172.28.0.30"])
 
@@ -732,23 +737,17 @@ class TestEnvironmentAdaptiveScopingAndWorkflows(unittest.TestCase):
                 self.assertTrue(validate_target_ip("10.42.0.0/24", env_path=env_file))
                 self.assertTrue(validate_target_ip("172.30.0.10", env_path=env_file))
 
-                # 10.99.1.5 is in 10.0.0.0/8 and NOT in 10.42.0.0/16 -> Blocked in enforce mode!
-                with self.assertRaises(ScopeViolationError):
-                    validate_target_ip("10.99.1.5", env_path=env_file)
-
-                # 192.168.1.50 and 8.8.8.8 -> Blocked in enforce mode!
-                with self.assertRaises(ScopeViolationError):
-                    validate_target_ip("192.168.1.50", env_path=env_file)
-                with self.assertRaises(ScopeViolationError):
-                    validate_target_ip("8.8.8.8", env_path=env_file)
+                # Out-of-scope targets no longer raise: the gate is advisory.
+                self.assertTrue(validate_target_ip("10.99.1.5", env_path=env_file))
+                self.assertTrue(validate_target_ip("192.168.1.50", env_path=env_file))
+                self.assertTrue(validate_target_ip("8.8.8.8", env_path=env_file))
 
                 # Warn mode: logs warning and returns True without raising
                 self.assertTrue(validate_target_ip("192.168.1.50", env_path=env_file, mode_override="warn"))
 
-                # Dry-run mode: returns True for in-scope, raises ScopeViolationError for out-of-scope
+                # Dry-run mode: advisory too, returns True either way
                 self.assertTrue(validate_target_ip("10.42.0.50", env_path=env_file, mode_override="dry-run"))
-                with self.assertRaises(ScopeViolationError):
-                    validate_target_ip("192.168.1.50", env_path=env_file, mode_override="dry-run")
+                self.assertTrue(validate_target_ip("192.168.1.50", env_path=env_file, mode_override="dry-run"))
 
                 summary = show_scope_configuration(env_path=env_file, as_json=True)
                 self.assertIn("10.42.0.0/16", summary["allowed_subnets"])

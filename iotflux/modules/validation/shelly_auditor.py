@@ -97,38 +97,41 @@ class ShellyAuditor(BaseValidationModule):
         except Exception as ex:
             logger.debug(f"Shelly.GetStatus notice: {ex}")
 
-        # 3. State-modifying actuation validation (requires Two-Key Operator Safety Gate)
-        if session.get_option("AUTHORIZED_TEST", False):
-            if self.assert_authorized(session, f"Momentary test pulse on relay {relay_id}"):
-                set_url = f"http://{target}:{port}/rpc/Switch.Set"
-                try:
-                    # Capture baseline
-                    pre_res = requests.get(f"http://{target}:{port}/rpc/Switch.GetStatus?id={relay_id}", timeout=timeout)
-                    was_on = pre_res.json().get("result", {}).get("output", False) if pre_res.status_code == 200 else False
+        # 3. State-modifying actuation (enabled by default; revert only when AUTO_REVERT is on)
+        if self.assert_authorized(session, f"Momentary test pulse on relay {relay_id}"):
+            set_url = f"http://{target}:{port}/rpc/Switch.Set"
+            try:
+                # Capture baseline
+                pre_res = requests.get(f"http://{target}:{port}/rpc/Switch.GetStatus?id={relay_id}", timeout=timeout)
+                was_on = pre_res.json().get("result", {}).get("output", False) if pre_res.status_code == 200 else False
 
-                    # Bounded perturbation: Turn on momentarily
-                    logger.info(f"Applying bounded 1.0s test pulse on {target}:{port} relay {relay_id}...")
-                    requests.post(set_url, json={"id": 1, "params": {"id": relay_id, "on": True}}, timeout=timeout)
-                    time.sleep(1.0)
+                logger.info(f"Toggling {target}:{port} relay {relay_id} to ON...")
+                requests.post(set_url, json={"id": 1, "params": {"id": relay_id, "on": True}}, timeout=timeout)
+                time.sleep(1.0)
 
-                    # Automated primary revert to baseline
+                if session.get_option("AUTO_REVERT", False):
                     requests.post(set_url, json={"id": 2, "params": {"id": relay_id, "on": was_on}}, timeout=timeout)
-                    logger.success(f"Baseline state successfully restored on {target}:{port} (relay {relay_id} => {was_on}).")
+                    logger.success(f"Baseline restored on {target}:{port} (relay {relay_id} => {was_on}).")
+                    restored = True
+                else:
+                    logger.info(f"Relay {relay_id} left ON on {target}:{port}. Use AUTO_REVERT=true to restore.")
+                    restored = False
 
-                    self.add_finding(
-                        finding_id="SHELLY-ACTUATION-VALIDATED",
-                        target=f"{target}:{port}",
-                        title="Bounded Actuator Actuation & Guaranteed Baseline Restoration",
-                        spec_id="SHELLY-RPC-2.0",
-                        cwe="CWE-306",
-                        status="COMPLIANT_VALIDATED",
-                        details=f"Verified physical relay actuation under bounded 1.0s window with confirmed restoration to baseline ({was_on}).",
-                        remediation="Enforce local RPC credentials to prevent unauthenticated actuator manipulation.",
-                        evidence={"relay_id": relay_id, "baseline_restored": True},
-                    )
-                except Exception as ex:
-                    logger.failure(f"Actuation validation failure on {target}:{port}: {ex}")
-        else:
-            logger.info("Safety Invariant: Actuation test bypassed (requires --authorize).")
+                self.add_finding(
+                    finding_id="SHELLY-ACTUATION-VALIDATED",
+                    target=f"{target}:{port}",
+                    title="Unauthenticated Actuator Control Validated",
+                    spec_id="SHELLY-RPC-2.0",
+                    cwe="CWE-306",
+                    status="CRITICAL_NON_COMPLIANT",
+                    details=(
+                        f"Verified physical relay actuation on channel {relay_id} without credentials; "
+                        + ("baseline restored." if restored else "relay left energized.")
+                    ),
+                    remediation="Enforce local RPC credentials to prevent unauthenticated actuator manipulation.",
+                    evidence={"relay_id": relay_id, "baseline_on": was_on, "auto_revert": restored},
+                )
+            except Exception as ex:
+                logger.failure(f"Actuation validation failure on {target}:{port}: {ex}")
 
         return self.findings

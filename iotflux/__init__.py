@@ -1,13 +1,14 @@
 """
-IoTFlux - Authorized IoT Protocol Conformance & Security Validation Framework
-Defensive Research, Protocol Resilience Testing, and Specification Conformance
+IoTFlux - IoT Exploitation & Protocol Assessment Framework
+Active exploitation, protocol resilience testing, and specification conformance
 
 DISCLAIMER:
-This framework is strictly for authorized security validation research, academic testing,
-and defensive device hardening. It adheres to a non-destructive, specification-driven
-architecture without arbitrary exploitation or weaponized capabilities.
+This framework is built for authorized security work on networks you control.
+It changes target state by default: relays toggle, registers are written, MQTT
+messages are published, and router port forwards are created. Nothing is
+automatically reverted unless you ask for it.
 """
 
-__version__ = "1.0.0"
+__version__ = "0.8.0"
 __framework__ = "IoTFlux"
 __author__ = "Defensive IoT Security Validation Lab"

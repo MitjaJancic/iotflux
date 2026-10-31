@@ -96,47 +96,55 @@ class BleMeshAuditor(BaseValidationModule):
             evidence={"response": body},
         )
 
-        # Step 2: Two-Key Safety Gate for Bounded Perturbation
-        authorized = session.get_option("AUTHORIZED_TEST", False)
-        if not authorized:
-            logger.info("Safety Invariant: Actuation test bypassed (requires --authorize).")
-            return self.findings
-
+        # Step 2: State change (enabled by default; revert only when AUTO_REVERT is on)
         if not self.assert_authorized(session, f"BLE lighting state toggle on {url}"):
             return self.findings
 
-        # Execute bounded toggle
         initial_state = bool(body.get("on", False))
         test_state = not initial_state
 
-        logger.warning(f"Executing bounded lighting toggle (on: {test_state}) for {pulse_dur}s...")
+        logger.warning(f"Toggling lighting state (on: {test_state}) and holding {pulse_dur}s...")
         http_json_request(url, method="PUT", data={"on": test_state})
         time.sleep(pulse_dur)
 
-        # Revert
-        logger.info(f"Executing deterministic auto-revert (on: {initial_state})...")
-        http_json_request(url, method="PUT", data={"on": initial_state})
-        time.sleep(0.1)
+        if session.get_option("AUTO_REVERT", False):
+            logger.info(f"Auto-revert enabled: restoring baseline (on: {initial_state})...")
+            http_json_request(url, method="PUT", data={"on": initial_state})
+            time.sleep(0.1)
+            _, final_body = http_json_request(url, method="GET")
+            final_state = bool(final_body.get("on", False))
+            restored = final_state == initial_state
+            if restored:
+                logger.success("Baseline restored.")
+            else:
+                logger.failure(f"Baseline NOT restored (on: {final_state}).")
+        else:
+            final_state = test_state
+            restored = False
+            logger.info(f"State left changed (on: {test_state}). Use AUTO_REVERT=true to restore.")
 
-        # Verify
-        _, final_body = http_json_request(url, method="GET")
-        final_state = bool(final_body.get("on", False))
-
-        if final_state == initial_state:
-            logger.success("Deterministic auto-revert confirmed: Light restored to original baseline.")
-            self.add_finding(
-                finding_id="BLE-LIGHTING-ACTUATION-VALIDATED",
-                target=url,
-                title="Unauthenticated Lighting Actuation Validated with Auto-Revert",
-                spec_id="BLE-MESH-SPEC",
-                cwe="CWE-284",
-                status="CRITICAL_NON_COMPLIANT",
-                details=(
-                    f"Successfully actuated light state (on: {test_state}) without credentials; "
-                    f"auto-revert restored baseline (on: {initial_state}) within {pulse_dur}s."
-                ),
-                remediation="Disable unauthenticated PUT/POST endpoints; bind actuator controls to authenticated user profiles.",
-                evidence={"initial_on": initial_state, "test_on": test_state, "restored_on": final_state},
-            )
+        self.add_finding(
+            finding_id="BLE-LIGHTING-ACTUATION-VALIDATED",
+            target=url,
+            title="Unauthenticated Lighting Actuation Validated",
+            spec_id="BLE-MESH-SPEC",
+            cwe="CWE-284",
+            status="CRITICAL_NON_COMPLIANT",
+            details=(
+                f"Successfully actuated light state (on: {test_state}) without credentials; "
+                + (
+                    f"baseline (on: {initial_state}) restored."
+                    if restored
+                    else f"state left at on: {test_state}."
+                )
+            ),
+            remediation="Disable unauthenticated PUT/POST endpoints; bind actuator controls to authenticated user profiles.",
+            evidence={
+                "initial_on": initial_state,
+                "test_on": test_state,
+                "final_on": final_state,
+                "auto_revert": restored,
+            },
+        )
 
         return self.findings

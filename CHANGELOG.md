@@ -3,6 +3,151 @@
 All notable changes to iotsploit are documented here. This project uses a
 single version source in `pyproject.toml`, mirrored by `iotsploit.__version__`.
 
+## v0.8.0 — Human-friendly command surface
+
+`iotflux <family> <address> <verb> [flags]` replaces
+`iotflux run exploit/<module> -t <host> --port <port> --opt ACTION=<verb>`.
+The module layer is unchanged; `run` and `--opt` still work.
+
+### Added
+- Family/verb registry (`core/commands.py`) covering every exploit module.
+- Address syntax `host[:port]` with a per-family default port.
+- Typed flags: durations (`--in 30s`), validated addresses, `--on`/`--off`
+  pairs, real integers, positional arguments where they read better
+  (`modbus … write-coil 0 1`).
+- `iotflux ls`, per-family help, per-verb help with defaults.
+- `iotflux completion bash` for shell completion.
+- `--json`, `--quiet`, `--dry-run` on every verb.
+- `.iotflux.toml` for standing defaults (timeout, threads).
+- A one-line verdict after each run, plus an undo hint on state changes.
+
+### Changed
+- Bare `iotflux` opens the console (was already the behaviour; now documented).
+- `--opt KEY=VALUE` is the escape hatch, not the primary interface.
+
+## v0.7.0 — Real-world readiness
+
+Everything here exists because the tool was only correct against the lab. The
+lab has been extended to match, but the changes are driven by what real devices
+actually do.
+
+### Added — device families
+- `exploit/tasmota_control` — Tasmota `/cm?cmnd=` command API: state, toggle,
+  OTA URL, MQTT and Wi-Fi redirection.
+- `exploit/esphome_control` — ESPHome `web_server`: entity inventory, toggle,
+  press, sensor read.
+- `exploit/ha_control` — Home Assistant REST API: token check, entity dump,
+  service calls.
+- `exploit/tuya_discover` — Tuya UDP discovery and TCP 6668 handshake.
+
+### Added — Shelly Gen1
+- `exploit/shelly_common` — generation-aware transport. Detects Gen1 vs Gen2
+  from `/shelly` or `/rpc/Shelly.GetDeviceInfo`, then maps every action to REST
+  (Gen1, Basic auth) or JSON-RPC (Gen2, Digest).
+- `shelly_control` and `shelly_persist` now drive both generations. Gen1
+  persistence uses `/settings` and `/ota?url=`; actions that do not exist on
+  Gen1 (`schedule`, `kvs`, `profile`) report `SHELLY-UNSUPPORTED-GEN1`.
+
+### Changed
+- **Cloud redirection sends a WebSocket RPC endpoint** (`host:6022/jrpc`), not
+  an HTTP URL — real firmware never reconnects to the old shape.
+- **MQTT redirection sends `topic_prefix`**, which real firmware requires.
+- **Schedules accept a cron `TIMESPEC`**; `@now+Ns` is only the fallback.
+- **Spray defaults are embedded-safe**: `THREADS=1`, `DELAY=0.3`. Four threads
+  wedge a Shelly's HTTP server and produce false 401s.
+- **Reboot and Wi-Fi changes poll for the device to come back** (`WAIT_BACK`)
+  instead of reporting success and moving on.
+- `fw_upload` gained `MODE=url` (device fetches) and separates accepted from
+  rejected from unclear, instead of treating HTTP 200 as proof.
+
+### Fixed
+- Matter probe sent a 16-byte blob; it now sends a real PASE
+  `PBKDFParamRequest` (MRP header + exchange header + TLV) and reads the reply
+  opcode. A real device drops anything it cannot parse.
+- MRP header length was wrong (8 bytes, actually 6) in both the probe and the
+  simulator.
+
+## v0.6.0 — Protocol breadth, radio, and Shelly
+
+Adds 16 modules across the management plane, legacy transfer, embedded web,
+cloud API, radio and smart-relay surfaces, plus a Shelly persistence module and
+mDNS discovery. No new Python dependencies: SNMP, BACnet and OPC UA are raw
+sockets with hand-rolled encoders.
+
+### Added — management plane and OT
+- `exploit/snmp_enum` — community spray, GetNext walk, single get (minimal BER).
+- `exploit/bacnet_write` — Who-Is, ReadProperty, WriteProperty (BVLC framing).
+- `exploit/opcua_browse` — GetEndpoints, anonymous CreateSession + Browse
+  (minimal binary client, SecurityPolicy None).
+
+### Added — legacy transfer
+- `exploit/tftp_pull` — anonymous config/firmware retrieval.
+- `exploit/ftp_anon` — anonymous login, listing, retrieval.
+
+### Added — embedded web and cloud
+- `exploit/cgi_inject` — shell injection in CGI handlers.
+- `exploit/fw_upload` — unsigned firmware upload.
+- `exploit/jwt_forge` — `alg:none` and bad-signature JWT.
+- `exploit/ws_hijack` — WebSocket with no origin validation.
+- `exploit/dns_rebind` — Host-header trust.
+- `exploit/matter_commission` — commissioning window probe.
+
+### Added — radio
+- `exploit/ble_scan`, `exploit/zigbee_sniff`, `exploit/subghz_replay`,
+  `exploit/wifi_attack`.
+
+### Added — Shelly
+- `discovery/shelly_mdns` — `_shelly._tcp` inventory with unicast fallback.
+- `exploit/shelly_persist` — schedules, KVS, MQTT/cloud redirection, Wi-Fi
+  move, unsigned OTA, auth lockout/removal, reboot, neighbour scan. Reuses
+  `creds.json` automatically.
+- `docs/SHELLY.md` — vulnerability classes, coverage matrix, open gaps.
+
+### Changed
+- `default_creds.for_protocol()` now returns the full vendor corpus instead of
+  generics only, so a spray without `VENDOR` still reaches vendor defaults.
+- Shelly vendor list extended with plausible operator passwords.
+
+### Fixed
+- BACnet APDU offset skipped only the BVLC header, not BVLC + NPDU.
+- OPC UA TwoByte NodeId was encoded with a redundant namespace byte; the
+  FourByte form used a 4-byte body instead of 1+2.
+- OPC UA `OpenSecureChannel` field order and the missing `TokenId` in the
+  symmetric security header.
+- `dns_rebind` compared bodies verbatim, so an echoed Host always looked like a
+  difference.
+
+## v0.5.0 — Exploitation posture
+
+Turns IoTFlux from a read-only conformance auditor into an active exploitation
+framework. All safety gates that blocked real-world use are removed or inverted.
+
+### Changed (breaking)
+- **Exploit-by-default.** `AUTHORIZED_TEST` and `AUTHORIZE` default to `True`.
+  `assert_authorized()` always passes unless the operator explicitly sets
+  `AUTHORIZED_TEST false`. `--authorize` / `--override-safety` /
+  `--authorized-test` still parse and are no-ops.
+- **Scope gate is advisory.** `validate_target_ip()` never raises. Out-of-boundary
+  targets log a `SCOPE_ADVISORY` line and a `SCOPE_ADVISORY` audit event, then run.
+  The physical-lab `10.10.0.0/16` two-key gate and its `assessment_scope.yaml`
+  metadata requirement are gone.
+- **Auto-revert is off.** `shelly_auditor`, `modbus_auditor` and
+  `ble_mesh_auditor` apply their change and leave it. `--auto-revert` /
+  `AUTO_REVERT=true` restores inline.
+- **Credentials persist in plaintext** to `creds.json` (`chmod 600`), replacing
+  the RAM-only vault for cross-invocation reuse.
+- `iotflux.core` resolves `FluxConsole`/`main` lazily, fixing an import cycle that
+  broke `import iotflux.modules`.
+
+### Added
+- `exploit/` module package: `cred_spray`, `mqtt_publish`, `coap_write`,
+  `upnp_portmap`, `tr069_exploit`, `firmware_extract`, `camera_capture`,
+  `modbus_write`, `shelly_control`.
+- `iotflux/core/creds_store.py` plus `iotflux creds list|get|export|delete|import`.
+- `--opt KEY=VALUE` (repeatable) and `--auto-revert` on `run`/`validate`.
+- `docs/EXPLOITATION.md`, `tests/test_exploit_modules.py` (31 tests).
+- `creds.json` and `evidence/captures/` added to `.gitignore`.
+
 ## v0.2.0
 
 Second iteration. Hardens iotsploit into a tool whose single read-only Phase-1

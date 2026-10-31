@@ -4,8 +4,8 @@ Authorized Defensive Security Validation Lab
 
 Evaluates industrial SCADA / PLC / HMI Modbus TCP interfaces (port 502):
 1. Audits unauthenticated holding register (FC 0x03) and coil (FC 0x01) read operations.
-2. Under explicit Two-Key Operator authorization, validates bounded setpoint perturbation (FC 0x06)
-   with deterministic auto-revert within the safety pulse window (t <= 2.0s).
+2. Writes a setpoint (FC 0x06) to prove unauthenticated control; restores the baseline
+   only when AUTO_REVERT is enabled.
 """
 
 from __future__ import annotations
@@ -73,9 +73,9 @@ class ModbusAuditor(BaseValidationModule):
         super().__init__()
         self.register_option("PORT", 502, "Target Modbus TCP supervisory port (default: 502)")
         self.register_option("REGISTER", 3, "Target holding register address to audit")
-        self.register_option("BASELINE_VAL", 100, "Expected baseline process setpoint value")
-        self.register_option("TEST_VAL", 101, "Bounded test setpoint value for perturbation check")
-        self.register_option("PULSE_DURATION", 1.0, "Maximum allowable perturbation duration in seconds (t <= 2.0s)")
+        self.register_option("BASELINE_VAL", "", "Baseline value to restore (blank = value read at runtime)")
+        self.register_option("TEST_VAL", 101, "Test setpoint value to write")
+        self.register_option("PULSE_DURATION", 1.0, "Seconds to hold the written value before readback")
 
     def run(self, session: FluxSession) -> List[ValidationFinding]:
         self.findings.clear()
@@ -124,55 +124,65 @@ class ModbusAuditor(BaseValidationModule):
             evidence={"register": reg_addr, "value": current_val},
         )
 
-        # Step 2: Two-Key Safety Gate for Bounded State Change
-        authorized = session.get_option("AUTHORIZED_TEST", False)
-        if not authorized:
-            logger.info("Safety Invariant: Modbus write test bypassed (requires --authorize).")
+        # Step 2: State change (enabled by default; revert only when AUTO_REVERT is on)
+        if not self.assert_authorized(session, f"Modbus FC 0x06 setpoint write on {target}:{port}"):
             return self.findings
 
-        if not self.assert_authorized(session, f"Modbus FC 0x06 setpoint perturbation on {target}:{port}"):
-            return self.findings
+        # Baseline: explicit BASELINE_VAL if set, otherwise the value just read.
+        baseline_val = int(self.get_option("BASELINE_VAL", session) or current_val)
 
-        # Execute bounded perturbation and auto-revert
-        logger.warning(f"Executing bounded FC 0x06 setpoint perturbation ({reg_addr} -> {test_val}) for {pulse_dur}s...")
+        logger.warning(f"Writing FC 0x06 register {reg_addr} -> {test_val} ...")
         write_success = raw_modbus_write_register(target, port, reg_addr, test_val)
         time.sleep(pulse_dur)
+        _, during_val = raw_modbus_read_holding_register(target, port, reg_addr)
 
-        # Mandatory Reversion
-        revert_success = raw_modbus_write_register(target, port, reg_addr, baseline_val)
-        _, final_val = raw_modbus_read_holding_register(target, port, reg_addr)
-
-        if write_success and revert_success and final_val == baseline_val:
-            logger.success("Deterministic auto-revert verified: Register restored to baseline.")
+        if not write_success:
             self.add_finding(
-                finding_id="MODBUS-UNAUTH-CONTROL-VALIDATED",
+                finding_id="MODBUS-WRITE-REJECTED",
                 target=f"{target}:{port}",
-                title="Unauthenticated Modbus TCP Setpoint Modification Validated",
-                spec_id="MODBUS-TCP-SPEC",
-                cwe="CWE-284",
-                status="CRITICAL_NON_COMPLIANT",
-                details=(
-                    f"Modbus controller accepted unauthenticated FC 0x06 write to Register {reg_addr} "
-                    f"({baseline_val} -> {test_val}). Auto-revert restored baseline ({baseline_val}) within {pulse_dur}s."
-                ),
-                remediation="Disable write access on untrusted network interfaces; enforce physical key-switch interlocking for setpoint overrides.",
-                evidence={
-                    "register": reg_addr,
-                    "test_val": test_val,
-                    "restored_val": final_val,
-                    "reversion_verified": True,
-                },
-            )
-        else:
-            self.add_finding(
-                finding_id="MODBUS-WRITE-INCONCLUSIVE",
-                target=f"{target}:{port}",
-                title="Modbus Write Action Rejected or Inconclusive",
+                title="Modbus Write Action Rejected",
                 spec_id="MODBUS-TCP-SPEC",
                 cwe="CWE-284",
                 status="INFORMATIONAL",
-                details=f"Write attempt to register {reg_addr} did not confirm state change or was blocked.",
+                details=f"FC 0x06 write to register {reg_addr} was rejected or unacknowledged.",
                 remediation="Verify controller memory map and access permissions.",
             )
+            return self.findings
+
+        if session.get_option("AUTO_REVERT", False):
+            raw_modbus_write_register(target, port, reg_addr, baseline_val)
+            _, final_val = raw_modbus_read_holding_register(target, port, reg_addr)
+            restored = final_val == baseline_val
+            if restored:
+                logger.success(f"Baseline restored: register {reg_addr} = {baseline_val}.")
+            else:
+                logger.failure(f"Baseline NOT restored: register {reg_addr} = {final_val} (wanted {baseline_val}).")
+        else:
+            final_val = during_val
+            restored = False
+            logger.info(f"Register {reg_addr} left at {during_val}. Use AUTO_REVERT=true to restore {baseline_val}.")
+
+        self.add_finding(
+            finding_id="MODBUS-UNAUTH-CONTROL-VALIDATED",
+            target=f"{target}:{port}",
+            title="Unauthenticated Modbus TCP Setpoint Modification Validated",
+            spec_id="MODBUS-TCP-SPEC",
+            cwe="CWE-284",
+            status="CRITICAL_NON_COMPLIANT",
+            details=(
+                f"Modbus controller accepted unauthenticated FC 0x06 write to Register {reg_addr} "
+                f"({baseline_val} -> {test_val}, readback {during_val}). "
+                + (f"Baseline restored to {baseline_val}." if restored else f"Register left at {final_val}.")
+            ),
+            remediation="Disable write access on untrusted network interfaces; enforce physical key-switch interlocking for setpoint overrides.",
+            evidence={
+                "register": reg_addr,
+                "baseline_val": baseline_val,
+                "test_val": test_val,
+                "readback_val": during_val,
+                "final_val": final_val,
+                "auto_revert": restored,
+            },
+        )
 
         return self.findings
