@@ -354,6 +354,12 @@ FAMILIES: Dict[str, dict] = {
                        "args": [{"name": "--rtsp-port", "dest": "RTSP_PORT", "type": int, "default": 554, "help": "RTSP port"},
                                 {"name": "--seconds", "dest": "SECONDS", "type": int, "default": 10, "help": "duration"}],
                        "help": "record the stream"},
+            "ptz": {"set": {"ACTION": "ptz"},
+                    "args": [{"name": "command", "dest": "PTZ_COMMAND", "help": "up, down, left, right, stop"},
+                             {"name": "--speed", "dest": "PTZ_SPEED", "default": "6", "help": "1-10"},
+                             {"name": "--seconds", "dest": "PTZ_SECONDS", "default": "1.5", "help": "hold time"},
+                             {"name": "--onvif-port", "dest": "ONVIF_PORT", "default": "", "help": "ONVIF port (blank = probe)"}],
+                    "help": "move it (ONVIF PTZ)"},
         },
     },
     "jooan": {
